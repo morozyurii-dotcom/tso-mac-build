@@ -73,7 +73,7 @@ package {
 
         private function onTick(e:Event):void {
             ticks++;
-            if (ticks % 30 != 0) return;   // ~раз в секунду
+            if (ticks > 5 && ticks % 30 != 0) return;   // первые 5 кадров + затем раз в секунду
             try {
                 var gf:* = swmmo.getDefinitionByName("globalFlash");
                 var guiLoaded:* = "?";
@@ -95,6 +95,14 @@ package {
             });
             ld.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, function (e:IOErrorEvent):void { msg("!! IO ERROR " + url + ": " + e.text); });
             ld.contentLoaderInfo.addEventListener(ErrorEvent.ERROR, function (e:ErrorEvent):void { msg("!! ERR " + url + ": " + e.text); });
+            // ВАЖНО: ловим необработанные ошибки ВНУТРИ загруженного SWF (ошибки игры
+            // идут в её loaderInfo, а не в наш) — иначе игра падает "тихо".
+            try {
+                ld.contentLoaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, function (ev:UncaughtErrorEvent):void {
+                    var er:* = ev.error;
+                    msg("!! [" + url + "] UNCAUGHT: " + (er is Error ? (Error(er).message + "\n" + Error(er).getStackTrace()) : String(er)));
+                });
+            } catch (e3:Error) {}
             try { ld.load(new URLRequest(url), ctx); } catch (err:Error) { msg("!! load() threw " + url + ": " + err.message); }
         }
 
