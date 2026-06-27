@@ -7,10 +7,8 @@ on:
 
 jobs:
   build:
-    # ARM-раннер (быстрый; Intel macos-13 застревает в очереди). Бандл потом
-    # принудительно ужимаем до x86_64 через lipo, чтобы на M-чипах он шёл через
-    # Rosetta — только так работает WebKit/HTMLLoader (arm64-WebKit у AIR нет),
-    # через который index.html грузит игру.
+    # ARM-раннер -> нативный arm64-бандл под M-чипы. Запускаем игру (client.swf)
+    # напрямую, без HTML-обёртки, поэтому мёртвый WebKit/HTMLLoader не нужен.
     runs-on: macos-14
     steps:
       - name: Checkout builder
@@ -41,31 +39,8 @@ jobs:
             staging/application.xml \
             -C staging .
           echo "==> bundle built."
-
-      - name: Diagnose & force x86_64 (Rosetta) so HTMLLoader/WebKit works
-        run: |
-          APP=build/TSO.app
-          echo "===== SDK runtime WebKit ====="
-          find "$AIR_HOME" -iname "*webkit*" -exec sh -c 'echo "$1 -> $(lipo -info "$1" 2>/dev/null)"' _ {} \; 2>/dev/null | head -20 || echo "none in SDK"
-          echo "===== bundle: WebKit files ====="
-          find "$APP" -iname "*webkit*" -exec sh -c 'echo "$1 -> $(lipo -info "$1" 2>/dev/null)"' _ {} \; 2>/dev/null | head -20 || echo "NO WEBKIT IN BUNDLE"
-          echo "===== bundle: all Mach-O archs (before) ====="
-          find "$APP/Contents" -type f | while read f; do
-            if file "$f" | grep -q "Mach-O"; then echo "$f -> $(lipo -info "$f" 2>/dev/null | sed 's/.*://')"; fi
-          done | head -40
-          echo "===== forcing x86_64 (strip arm64 from universal Mach-O) ====="
-          find "$APP/Contents" -type f | while read f; do
-            if file "$f" | grep -q "Mach-O"; then
-              archs=$(lipo -info "$f" 2>/dev/null)
-              if echo "$archs" | grep -q "arm64" && echo "$archs" | grep -q "x86_64"; then
-                lipo "$f" -remove arm64 -output "$f" 2>/dev/null && echo "stripped: $f"
-              fi
-            fi
-          done
-          echo "===== main executable arch (after) ====="
-          find "$APP/Contents/MacOS" -type f -exec sh -c 'file "$1" | grep -q Mach-O && echo "$1 -> $(lipo -info "$1" 2>/dev/null | sed "s/.*://")"' _ {} \;
-          # re-sign ad-hoc after lipo (codesign invalidated by binary edit)
-          codesign --force --deep -s - "$APP" 2>&1 | tail -2 || true
+          echo "==> descriptor content entry:"; grep -o "<content>[^<]*</content>" staging/application.xml
+          echo "==> ad-hoc re-sign:"; codesign --force --deep -s - build/TSO.app 2>&1 | tail -1 || true
 
       - name: Build DMG
         run: |

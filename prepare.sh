@@ -52,6 +52,12 @@ if "<supportedProfiles>" not in s:
     s = s.replace("</application>",
                   "  <supportedProfiles>extendedDesktop desktop</supportedProfiles>\n</application>")
 
+# 4) HTML-движок (WebKit/HTMLLoader) удалён из новых AIR -> белое окно.
+#    Запускаем саму игру (client.swf) напрямую, без HTML-обёртки index.html.
+#    Чистый Flash WebKit не нужен -> работает на arm64 нативно, без Rosetta.
+s = s.replace("<content>index.html</content>", "<content>client.swf</content>")
+s = s.replace("<renderMode>auto</renderMode>", "<renderMode>direct</renderMode>")
+
 open(p, "w", encoding="utf-8").write(s)
 print("patched:")
 print(s)
