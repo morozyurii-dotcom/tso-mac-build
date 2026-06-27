@@ -48,7 +48,7 @@ package {
             catch (err:Error) { logFile = File.applicationStorageDirectory.resolvePath("TSO_log.txt"); }
             try { var fs0:FileStream = new FileStream(); fs0.open(logFile, FileMode.WRITE); fs0.writeUTFBytes(""); fs0.close(); } catch (e2:Error) {}
 
-            msg("=== TSO native loader v2 ===");
+            msg("=== TSO native loader v4 ===");
             msg("AIR " + Capabilities.version + " os=" + Capabilities.os + " cpu=" + Capabilities.cpuArchitecture);
             msg("stage " + stage.stageWidth + "x" + stage.stageHeight);
 
@@ -56,9 +56,21 @@ package {
                 var er:* = ev.error;
                 msg("!! UNCAUGHT: " + (er is Error ? (Error(er).message + "\n" + Error(er).getStackTrace()) : String(er)));
             });
+
+            // Игра закрывает окно/выходит без ошибки -> перехватываем И ОТМЕНЯЕМ,
+            // чтобы окно осталось живым и игра догрузилась. Лог скажет, кто инициатор.
+            try { NativeApplication.nativeApplication.autoExit = false; } catch (e4:Error) {}
             NativeApplication.nativeApplication.addEventListener(Event.EXITING, function (e:Event):void {
-                msg("!! APP EXITING (something called exit)");
-            });
+                try { e.preventDefault(); } catch (ee:Error) {}
+                msg("!! EXITING intercepted & prevented");
+            }, false, 1000);
+            try {
+                stage.nativeWindow.addEventListener(Event.CLOSING, function (e:Event):void {
+                    try { e.preventDefault(); } catch (ee:Error) {}
+                    msg("!! nativeWindow CLOSING intercepted & prevented");
+                }, false, 1000);
+                stage.nativeWindow.addEventListener(Event.CLOSE, function (e:Event):void { msg("!! nativeWindow CLOSE fired"); });
+            } catch (e5:Error) { msg("nativeWindow hook err: " + e5.message); }
 
             msg("loading library.swf ...");
             loadSwf("library.swf", false, function (c:*):void {
