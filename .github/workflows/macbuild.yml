@@ -7,7 +7,10 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14        # Apple Silicon (arm64) раннер — под M-чипы
+    # Intel-раннер -> x86_64-бандл. На Apple Silicon (M-чипы) он запустится через
+    # Rosetta, и тогда работает WebKit/HTMLLoader (arm64-версии WebKit у AIR нет),
+    # через который index.html грузит игру.
+    runs-on: macos-13
     steps:
       - name: Checkout builder
         uses: actions/checkout@v4
@@ -38,6 +41,10 @@ jobs:
             -C staging .
           echo "==> bundle built:"
           ls -la build/TSO.app/Contents 2>/dev/null || ls -la build
+          echo "==> main executable arch (expect x86_64 only):"
+          find build/TSO.app/Contents/MacOS -type f -exec lipo -info {} \; 2>/dev/null || true
+          echo "==> WebKit present in bundle? (needed for HTMLLoader):"
+          find build/TSO.app -iname "*webkit*" 2>/dev/null | head || echo "NO WEBKIT FOUND"
 
       - name: Build DMG
         run: |
