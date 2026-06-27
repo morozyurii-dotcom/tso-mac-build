@@ -55,7 +55,8 @@ if "<supportedProfiles>" not in s:
 # Нативный путь: вместо мёртвой HTML-оболочки (index.html+WebKit) запускаем
 # нашу AS3-оболочку TSOLoader.swf, которая сама грузит library.swf + client.swf.
 s = s.replace("<content>index.html</content>", "<content>TSOLoader.swf</content>")
-s = s.replace("<renderMode>auto</renderMode>", "<renderMode>direct</renderMode>")
+# renderMode=cpu: avoid GPU/Stage3D context (на arm64-AIR он рушит окно — CLOSE без CLOSING).
+s = s.replace("<renderMode>auto</renderMode>", "<renderMode>cpu</renderMode>")
 
 open(p, "w", encoding="utf-8").write(s)
 print("patched:")

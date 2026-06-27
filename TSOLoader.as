@@ -48,7 +48,7 @@ package {
             catch (err:Error) { logFile = File.applicationStorageDirectory.resolvePath("TSO_log.txt"); }
             try { var fs0:FileStream = new FileStream(); fs0.open(logFile, FileMode.WRITE); fs0.writeUTFBytes(""); fs0.close(); } catch (e2:Error) {}
 
-            msg("=== TSO native loader v4 ===");
+            msg("=== TSO native loader v5 (renderMode=cpu) ===");
             msg("AIR " + Capabilities.version + " os=" + Capabilities.os + " cpu=" + Capabilities.cpuArchitecture);
             msg("stage " + stage.stageWidth + "x" + stage.stageHeight);
 
