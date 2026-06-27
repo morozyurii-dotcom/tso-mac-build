@@ -37,7 +37,7 @@ s = open(p, encoding="utf-8").read()
 
 # 1) Поднять namespace AIR до уровня SDK 51 (в исходнике стоит 15.0).
 s = re.sub(r'xmlns="http://ns\.adobe\.com/air/application/[0-9.]+"',
-           'xmlns="http://ns.adobe.com/air/application/51.0"', s)
+           'xmlns="http://ns.adobe.com/air/application/33.1"', s)
 
 # 2) Убрать блок <icon> — этих png в комплекте нет, упаковка бы упала.
 s = re.sub(r'\s*<icon>.*?</icon>', '', s, flags=re.S)
@@ -52,11 +52,8 @@ if "<supportedProfiles>" not in s:
     s = s.replace("</application>",
                   "  <supportedProfiles>extendedDesktop desktop</supportedProfiles>\n</application>")
 
-# 4) HTML-движок (WebKit/HTMLLoader) удалён из новых AIR -> белое окно.
-#    Запускаем саму игру (client.swf) напрямую, без HTML-обёртки index.html.
-#    Чистый Flash WebKit не нужен -> работает на arm64 нативно, без Rosetta.
-s = s.replace("<content>index.html</content>", "<content>client.swf</content>")
-s = s.replace("<renderMode>auto</renderMode>", "<renderMode>direct</renderMode>")
+# Оставляем content=index.html: на AIR 33 жив WebKit/HTMLLoader, поэтому
+# оригинальная HTML-оболочка работает и правильно грузит client.swf + library.swf.
 
 open(p, "w", encoding="utf-8").write(s)
 print("patched:")

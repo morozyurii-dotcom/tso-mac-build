@@ -17,7 +17,7 @@ jobs:
       - name: Setup AIR SDK (HARMAN)
         uses: joshtynjala/setup-adobe-air-action@v2
         with:
-          air-version: "51"
+          air-version: "33.1.1.743"   # последняя версия с живым WebKit/HTMLLoader
           accept-license: true
 
       - name: Prepare AIR app (fetch game + patch descriptor)
@@ -39,8 +39,26 @@ jobs:
             staging/application.xml \
             -C staging .
           echo "==> bundle built."
-          echo "==> descriptor content entry:"; grep -o "<content>[^<]*</content>" staging/application.xml
-          echo "==> ad-hoc re-sign:"; codesign --force --deep -s - build/TSO.app 2>&1 | tail -1 || true
+
+      - name: Diagnose WebKit + force x86_64 (Rosetta)
+        run: |
+          APP=build/TSO.app
+          echo "===== WebKit in bundle (HTMLLoader engine) ====="
+          find "$APP" -iname "*webkit*" 2>/dev/null | head -20 || echo "NO WEBKIT"
+          echo "===== Mach-O archs (before) ====="
+          find "$APP/Contents" -type f | while read f; do
+            file "$f" | grep -q "Mach-O" && echo "$f -> $(lipo -info "$f" 2>/dev/null | sed 's/.*://')"
+          done | head -40
+          echo "===== force x86_64 (strip arm64 from any universal Mach-O) ====="
+          find "$APP/Contents" -type f | while read f; do
+            if file "$f" | grep -q "Mach-O"; then
+              a=$(lipo -info "$f" 2>/dev/null)
+              echo "$a" | grep -q "arm64" && echo "$a" | grep -q "x86_64" && lipo "$f" -remove arm64 -output "$f" 2>/dev/null && echo "stripped: $f"
+            fi
+          done
+          echo "===== main executable arch (after) ====="
+          find "$APP/Contents/MacOS" -type f -exec sh -c 'file "$1" | grep -q Mach-O && echo "$1 -> $(lipo -info "$1" 2>/dev/null | sed "s/.*://")"' _ {} \;
+          codesign --force --deep -s - "$APP" 2>&1 | tail -1 || true
 
       - name: Build DMG
         run: |
