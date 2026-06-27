@@ -37,7 +37,7 @@ s = open(p, encoding="utf-8").read()
 
 # 1) Поднять namespace AIR до уровня SDK 51 (в исходнике стоит 15.0).
 s = re.sub(r'xmlns="http://ns\.adobe\.com/air/application/[0-9.]+"',
-           'xmlns="http://ns.adobe.com/air/application/33.1"', s)
+           'xmlns="http://ns.adobe.com/air/application/51.0"', s)
 
 # 2) Убрать блок <icon> — этих png в комплекте нет, упаковка бы упала.
 s = re.sub(r'\s*<icon>.*?</icon>', '', s, flags=re.S)
@@ -52,13 +52,19 @@ if "<supportedProfiles>" not in s:
     s = s.replace("</application>",
                   "  <supportedProfiles>extendedDesktop desktop</supportedProfiles>\n</application>")
 
-# Оставляем content=index.html: на AIR 33 жив WebKit/HTMLLoader, поэтому
-# оригинальная HTML-оболочка работает и правильно грузит client.swf + library.swf.
+# Нативный путь: вместо мёртвой HTML-оболочки (index.html+WebKit) запускаем
+# нашу AS3-оболочку TSOLoader.swf, которая сама грузит library.swf + client.swf.
+s = s.replace("<content>index.html</content>", "<content>TSOLoader.swf</content>")
+s = s.replace("<renderMode>auto</renderMode>", "<renderMode>direct</renderMode>")
 
 open(p, "w", encoding="utf-8").write(s)
 print("patched:")
 print(s)
 PY
+
+echo "==> compiling native AS3 loader (TSOLoader.swf)"
+"$AIR_HOME/bin/mxmlc" TSOLoader.as -output="$STAGE/TSOLoader.swf" +configname=air 2>&1 | tail -25
+test -f "$STAGE/TSOLoader.swf" && echo "TSOLoader.swf compiled OK ($(du -h "$STAGE/TSOLoader.swf" | cut -f1))" || { echo "!! COMPILE FAILED"; exit 1; }
 
 echo "==> staging ready:"
 ls -la "$STAGE" | head -40
