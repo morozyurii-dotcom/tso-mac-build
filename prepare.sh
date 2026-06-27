@@ -38,6 +38,9 @@ s = re.sub(r'xmlns="http://ns\.adobe\.com/air/application/[0-9.]+"',
 # 2) Убрать блок <icon> — этих png в комплекте нет, упаковка бы упала.
 s = re.sub(r'\s*<icon>.*?</icon>', '', s, flags=re.S)
 
+# 2b) Убрать allowBrowserInvocation — для captive bundle не поддерживается (adt error 116).
+s = re.sub(r'\s*<allowBrowserInvocation>.*?</allowBrowserInvocation>', '', s, flags=re.S)
+
 # 3) Добавить профиль extendedDesktop — index.html использует NativeProcess.
 #    По XSD supportedProfiles идёт последним перед </application>, поэтому
 #    после удаления <icon> вставка сюда сохраняет правильный порядок элементов.
