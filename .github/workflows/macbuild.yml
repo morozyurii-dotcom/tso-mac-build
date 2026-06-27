@@ -1,0 +1,53 @@
+name: Build macOS app
+
+on:
+  workflow_dispatch:        # запуск вручную из вкладки Actions
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14        # Apple Silicon (arm64) раннер — под M-чипы
+    steps:
+      - name: Checkout builder
+        uses: actions/checkout@v4
+
+      - name: Setup AIR SDK (HARMAN)
+        uses: joshtynjala/setup-adobe-air-action@v2
+        with:
+          air-version: "51"
+          accept-license: true
+
+      - name: Prepare AIR app (fetch game + patch descriptor)
+        run: |
+          chmod +x prepare.sh
+          ./prepare.sh
+
+      - name: Generate self-signed certificate
+        run: |
+          "$AIR_HOME/bin/adt" -certificate -cn "TSO" -validityPeriod 25 2048-RSA cert.p12 "tsopass"
+
+      - name: Package native macOS bundle (.app)
+        run: |
+          mkdir -p build
+          "$AIR_HOME/bin/adt" -package \
+            -storetype pkcs12 -keystore cert.p12 -storepass "tsopass" \
+            -target bundle \
+            build/TSO.app \
+            staging/application.xml \
+            -C staging .
+          echo "==> bundle built:"
+          ls -la build/TSO.app/Contents 2>/dev/null || ls -la build
+
+      - name: Build DMG
+        run: |
+          hdiutil create -volname "The Settlers Online" \
+            -srcfolder build/TSO.app -ov -format UDZO TSO-macOS.dmg
+          ls -la TSO-macOS.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TSO-macOS
+          path: TSO-macOS.dmg
+          retention-days: 14
