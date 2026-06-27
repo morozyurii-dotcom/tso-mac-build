@@ -25,6 +25,10 @@ cp "$SRC/META-INF/AIR/application.xml" "$STAGE"/application.xml
 # Старые подписанные META-INF и mimetype убираем — adt сгенерит свои.
 rm -rf "$STAGE/META-INF" "$STAGE/mimetype"
 
+# Windows-заглушки (.exe) для мультиоконности через NativeProcess — в macOS-бандле
+# запрещены adt и для основной игры не нужны.
+rm -f "$STAGE"/*.exe
+
 echo "==> patch application.xml"
 python3 - <<'PY'
 import re
